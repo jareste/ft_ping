@@ -4,6 +4,7 @@ NAME = ft_ping
 RM = rm -rf
 CC = cc
 CFLAGS = -Werror -Wextra -Wall -g -fsanitize=address
+LDFLAGS = -lm
 #########
 
 #########
@@ -26,19 +27,19 @@ $(OBJ_DIR)/%.o: %.c
 	${CC} -MMD $(CFLAGS) -c -Isrcs/ping $< -o $@
 
 all: 
-	$(MAKE) $(NAME) --no-print-directory
+	$(MAKE) $(NAME)
 
 $(NAME): $(OBJ) Makefile
-	$(CC) $(CFLAGS) $(OBJ) -o $(NAME)
+	$(CC) $(CFLAGS) $(OBJ) -o $(NAME) $(LDFLAGS)
 	@echo "EVERYTHING DONE  "
 
 clean:
-	$(RM) $(OBJ) $(DEP) --no-print-directory
-	$(RM) -r $(OBJ_DIR) --no-print-directory
+	$(RM) $(OBJ) $(DEP)
+	$(RM) -r $(OBJ_DIR)
 	@echo "OBJECTS REMOVED   "
 
 fclean: clean
-	$(RM) $(NAME) --no-print-directory
+	$(RM) $(NAME)
 	@echo "EVERYTHING REMOVED   "
 
 re:	fclean all
