@@ -7,11 +7,11 @@ CFLAGS = -Werror -Wextra -Wall -g -fsanitize=address
 #########
 
 #########
-FILES = main
+FILES = main ft_ping
 
 SRC = $(addsuffix .c, $(FILES))
 
-vpath %.c srcs
+vpath %.c srcs srcs/ping
 #########
 
 #########
@@ -23,7 +23,7 @@ DEP = $(addsuffix .d, $(basename $(OBJ)))
 #########
 $(OBJ_DIR)/%.o: %.c
 	@mkdir -p $(@D)
-	${CC} -MMD $(CFLAGS) -c -I inc -Imlx -I$(LIBFT) $< -o $@
+	${CC} -MMD $(CFLAGS) -c -Isrcs/ping $< -o $@
 
 all: 
 	$(MAKE) $(NAME) --no-print-directory
