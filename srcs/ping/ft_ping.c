@@ -129,7 +129,6 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
                 perror("recvfrom");
                 continue;
             }
-            received++;
 
             gettimeofday(&end, NULL);
 
@@ -141,9 +140,10 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
 
             if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
             {
+                received++;
                 if (!(flags & Q_FLAG))
                 {
-                    printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.1f ms\n",
+                    printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
                            PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
                 }
 
@@ -160,7 +160,8 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
         }
         else
         {
-            /*timeout*/
+            /* timeout */
+
         }
 
         gettimeofday(&end, NULL);
@@ -175,7 +176,9 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
 
     close(sockfd);
 
-    mdev_time = sqrt(sum_sq_diff / received);
+    if (received > 0) {
+        mdev_time = sqrt(sum_sq_diff / received);
+    }
 
     printf("\n--- %s ping statistics ---\n", destination);
     printf("%d packets transmitted, %d received, %.0f%% packet loss, time %ldms\n",
