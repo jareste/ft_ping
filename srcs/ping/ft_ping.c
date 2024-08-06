@@ -109,8 +109,9 @@ static void* m_send_ping(void *arg)
 
         if (sendto(sockfd, sendbuf, sizeof(icmp_pkt), 0, (struct sockaddr *)&addr, addrlen) <= 0)
         {
-            perror("sendto");
-            exit(EXIT_FAILURE);
+            /* TCP network may be colapsed, let it have some rest. */
+            usleep(50);
+            continue;
         }
         transmitted++;
         *args->transmitted = transmitted;
