@@ -126,6 +126,8 @@ void* receive_ping(void *arg)
     double sum_sq_diff = *args->sum_sq_diff;
     int received = *args->received;
 
+
+    UNUSED_PARAM(flags);
     while (pinging)
     {
         timeout.tv_sec = TIMEOUT;
@@ -206,7 +208,6 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
     int transmitted = 0, received = 0;
     double min_time = INT_MAX, max_time = 0, total_time = 0;
     double sum_sq_diff = 0, avg_time = 0, mdev_time = 0;
-    struct timeval timeout;
 
     UNUSED_PARAM(preload);
     UNUSED_PARAM(timeout_time);
