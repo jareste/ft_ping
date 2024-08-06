@@ -9,6 +9,7 @@
 #define W_FLAG 0x0010
 #define V_FLAG 0x0020
 #define D_FLAG 0x0040
+#define I_FLAG 0x0080
 
 
 void ping(const char *destination, int flags, int preload, int timeout);

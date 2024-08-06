@@ -24,6 +24,7 @@
 
 #define PACKET_SIZE 64
 #define TIMEOUT 1
+#define SECONDS_TO_NANOSECONDS 1000 * 1000
 
 typedef struct ping_args
 {
@@ -41,6 +42,7 @@ typedef struct ping_args
     int sockfd;
     int preload;
     int timeout_time;
+    double interval;
 } ping_args_t;
 
 /*********************************/
@@ -91,6 +93,11 @@ static void* m_send_ping(void *arg)
     int sockfd = args->sockfd;
     int preload = args->preload;
     int flags = args->flags;
+    double interval = args->interval >= 0 ? args->interval : 1;
+    if (interval < 0.0005)
+    {
+        interval = 0.0005;
+    }
 
     while (pinging)
     {
@@ -115,14 +122,18 @@ static void* m_send_ping(void *arg)
         }
         transmitted++;
         *args->transmitted = transmitted;
-        if (flags & F_FLAG)
+        if (flags & I_FLAG)
+        {
+            usleep(interval SECONDS_TO_NANOSECONDS);
+        }
+        else if (flags & F_FLAG)
         {
             /* even in flood mode, without usleep network colapses. */
             usleep(500);
         }
         else if ((preload <= 0))
         {
-            usleep(1000 * 1000);
+            usleep(interval SECONDS_TO_NANOSECONDS);
         }
         else if (preload > 0)
         {
@@ -191,7 +202,7 @@ static void* m_receive_ping(void *arg)
                     {
                         printf("[%ld.%06ld]", end.tv_sec, end.tv_usec);
                     }
-                    
+
                     printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
                            PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
                 }
@@ -227,7 +238,7 @@ static void* m_receive_ping(void *arg)
 }
 
 /* public ping command entrypoint. */
-void ping(const char *destination, int flags, int preload, int timeout_time)
+void ping(const char *destination, int flags, int preload, int timeout_time, double interval)
 {
     struct sockaddr_in addr;
     struct hostent *host;
@@ -284,7 +295,8 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
         .flags = flags,
         .sockfd = sockfd,
         .preload = preload,
-        .timeout_time = timeout_time
+        .timeout_time = timeout_time,
+        .interval = interval
     };
 
     pthread_create(&send_thread, NULL, m_send_ping, &args);
