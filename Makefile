@@ -3,7 +3,7 @@ NAME = ft_ping
 #########
 RM = rm -rf
 CC = cc
-CFLAGS = -Werror -Wextra -Wall -g -fsanitize=address
+CFLAGS = #-Werror -Wextra -Wall #-g -fsanitize=address
 LDFLAGS = -lm
 #########
 

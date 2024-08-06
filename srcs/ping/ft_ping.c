@@ -12,9 +12,28 @@
 #include <signal.h>
 #include <limits.h>
 #include <math.h>
+#include <pthread.h>
 
 #define PACKET_SIZE 64
 #define TIMEOUT 1
+
+typedef struct ping_args
+{
+    struct timeval* start;
+    struct sockaddr_in* addr;
+    int* transmitted;
+    int* received;
+    double* min_time;
+    double* max_time;
+    double* total_time;
+    double* sum_sq_diff;
+    double* avg_time;
+    char* ip_str;
+    int flags;
+    int sockfd;
+
+} ping_args_t;
+
 
 unsigned short checksum(void *b, int len)
 {
@@ -46,23 +65,148 @@ void handle_signal(int sig)
     pinging = 0;
 }
 
+void* send_ping(void *arg)
+{
+    struct icmp icmp_pkt;
+    char sendbuf[PACKET_SIZE];
+    int addrlen = sizeof(struct sockaddr_in);
+    int seq = 0;
+    /**/
+    ping_args_t* args = (ping_args_t*)arg;
+    struct timeval start = *args->start;
+    struct sockaddr_in addr = *args->addr;
+    int transmitted = *args->transmitted;
+    int sockfd = args->sockfd;
+
+    while (pinging)
+    {
+        gettimeofday(&start, NULL);
+        *args->start = start;
+
+        memset(&icmp_pkt, 0, sizeof(icmp_pkt));
+        icmp_pkt.icmp_type = ICMP_ECHO;
+        icmp_pkt.icmp_code = 0;
+        icmp_pkt.icmp_cksum = 0;
+        icmp_pkt.icmp_seq = seq++;
+        icmp_pkt.icmp_id = getpid();
+        icmp_pkt.icmp_cksum = checksum(&icmp_pkt, sizeof(icmp_pkt));
+
+        memcpy(sendbuf, &icmp_pkt, sizeof(icmp_pkt));
+
+        if (sendto(sockfd, sendbuf, sizeof(icmp_pkt), 0, (struct sockaddr *)&addr, addrlen) <= 0)
+        {
+            perror("sendto");
+            exit(EXIT_FAILURE);
+        }
+        transmitted++;
+        *args->transmitted = transmitted;
+        usleep(1000 * 1000);
+    }
+
+    return NULL;
+
+}
+
+void* receive_ping(void *arg)
+{
+    fd_set readfds;
+    char recvbuf[PACKET_SIZE];
+    socklen_t len = sizeof(struct sockaddr_in);
+    struct timeval end, timeout;
+    /**/
+    ping_args_t* args = (ping_args_t*)arg;
+    struct sockaddr_in addr = *args->addr;
+    int sockfd = args->sockfd;
+    char* ip_str = args->ip_str;
+    int flags = args->flags;
+    double min_time = *args->min_time;
+    double max_time = *args->max_time;
+    double total_time = *args->total_time;
+    double avg_time = *args->avg_time;
+    double sum_sq_diff = *args->sum_sq_diff;
+    int received = *args->received;
+
+    while (pinging)
+    {
+        timeout.tv_sec = TIMEOUT;
+        timeout.tv_usec = 0;
+        FD_ZERO(&readfds);
+        FD_SET(sockfd, &readfds);
+
+        int ret = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
+        if (ret > 0 && FD_ISSET(sockfd, &readfds))
+        {
+            if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
+            {
+                perror("recvfrom");
+                continue;
+            }
+
+            gettimeofday(&end, NULL);
+
+            struct timeval start = *args->start;
+
+            double elapsed = (end.tv_sec - start.tv_sec) * 1000.0;
+            elapsed += (end.tv_usec - start.tv_usec) / 1000.0;
+
+            struct ip *ip_hdr = (struct ip *)recvbuf;
+            struct icmp *recv_icmp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
+
+            if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
+            {
+                received++;
+                *args->received = received;
+                
+                // if (!(flags & Q_FLAG))
+                // {
+                    printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+                           PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
+                // }
+
+                if (elapsed < min_time)
+                {
+                    min_time = elapsed;
+                    *args->min_time = min_time;
+                }
+                if (elapsed > max_time)
+                {
+                    max_time = elapsed;
+                    *args->max_time = max_time;
+                }
+                total_time += elapsed;
+                *args->total_time = total_time;
+
+                double diff = elapsed - avg_time;
+                avg_time += diff / received;
+                *args->avg_time = avg_time;
+            
+                sum_sq_diff += diff * (elapsed - avg_time);
+                *args->sum_sq_diff = sum_sq_diff;
+            }
+        }
+        else
+        {
+            /* timeout */
+
+        }
+    }
+
+
+    return NULL;
+}
+
 void ping(const char *destination, int flags, int preload, int timeout_time)
 {
     struct sockaddr_in addr;
     struct hostent *host;
     int sockfd;
-    struct icmp icmp_pkt;
-    char sendbuf[PACKET_SIZE];
-    char recvbuf[PACKET_SIZE];
-    int addrlen = sizeof(addr);
-    socklen_t len = sizeof(addr);
-    struct timeval start, end, total_start, total_end;
-    int seq = 0;
+    pthread_t recv_thread;
+    pthread_t send_thread;
+    struct timeval start, total_start, total_end;
     int transmitted = 0, received = 0;
     double min_time = INT_MAX, max_time = 0, total_time = 0;
     double sum_sq_diff = 0, avg_time = 0, mdev_time = 0;
     struct timeval timeout;
-    fd_set readfds;
 
     UNUSED_PARAM(preload);
     UNUSED_PARAM(timeout_time);
@@ -90,87 +234,109 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
 
     gettimeofday(&total_start, NULL);
 
-    while (pinging)
-    {
-        gettimeofday(&start, NULL);
+    ping_args_t args = {
+        .start = &start,
+        .addr = &addr,
+        .transmitted = &transmitted,
+        .received = &received,
+        .min_time = &min_time,
+        .max_time = &max_time,
+        .total_time = &total_time,
+        .sum_sq_diff = &sum_sq_diff,
+        .avg_time = &avg_time,
+        .ip_str = ip_str,
+        .flags = flags,
+        .sockfd = sockfd
+    };
 
-        memset(&icmp_pkt, 0, sizeof(icmp_pkt));
-        icmp_pkt.icmp_type = ICMP_ECHO;
-        icmp_pkt.icmp_code = 0;
-        icmp_pkt.icmp_cksum = 0;
-        icmp_pkt.icmp_seq = seq++;
-        icmp_pkt.icmp_id = getpid();
-        icmp_pkt.icmp_cksum = checksum(&icmp_pkt, sizeof(icmp_pkt));
 
-        memcpy(sendbuf, &icmp_pkt, sizeof(icmp_pkt));
+    pthread_create(&send_thread, NULL, send_ping, &args);
+    pthread_create(&recv_thread, NULL, receive_ping, &args);
 
-        if (sendto(sockfd, sendbuf, sizeof(icmp_pkt), 0, (struct sockaddr *)&addr, addrlen) <= 0)
-        {
-            perror("sendto");
-            exit(EXIT_FAILURE);
-        }
-        transmitted++;
+    pthread_join(send_thread, NULL);
+    pthread_join(recv_thread, NULL);
 
-        if (flags & V_FLAG)
-        {
-            printf("Sent ICMP packet to %s\n", destination);
-        }
+    // while (pinging)
+    // {
+    //     gettimeofday(&start, NULL);
 
-        timeout.tv_sec = TIMEOUT;
-        timeout.tv_usec = 0;
-        FD_ZERO(&readfds);
-        FD_SET(sockfd, &readfds);
+    //     memset(&icmp_pkt, 0, sizeof(icmp_pkt));
+    //     icmp_pkt.icmp_type = ICMP_ECHO;
+    //     icmp_pkt.icmp_code = 0;
+    //     icmp_pkt.icmp_cksum = 0;
+    //     icmp_pkt.icmp_seq = seq++;
+    //     icmp_pkt.icmp_id = getpid();
+    //     icmp_pkt.icmp_cksum = checksum(&icmp_pkt, sizeof(icmp_pkt));
 
-        int ret = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
-        if (ret > 0 && FD_ISSET(sockfd, &readfds))
-        {
-            if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
-            {
-                perror("recvfrom");
-                continue;
-            }
+    //     memcpy(sendbuf, &icmp_pkt, sizeof(icmp_pkt));
 
-            gettimeofday(&end, NULL);
+    //     if (sendto(sockfd, sendbuf, sizeof(icmp_pkt), 0, (struct sockaddr *)&addr, addrlen) <= 0)
+    //     {
+    //         perror("sendto");
+    //         exit(EXIT_FAILURE);
+    //     }
+    //     transmitted++;
 
-            double elapsed = (end.tv_sec - start.tv_sec) * 1000.0;
-            elapsed += (end.tv_usec - start.tv_usec) / 1000.0;
+    //     if (flags & V_FLAG)
+    //     {
+    //         printf("Sent ICMP packet to %s\n", destination);
+    //     }
 
-            struct ip *ip_hdr = (struct ip *)recvbuf;
-            struct icmp *recv_icmp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
+    //     timeout.tv_sec = TIMEOUT;
+    //     timeout.tv_usec = 0;
+    //     FD_ZERO(&readfds);
+    //     FD_SET(sockfd, &readfds);
 
-            if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
-            {
-                received++;
-                if (!(flags & Q_FLAG))
-                {
-                    printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
-                           PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
-                }
+    //     int ret = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
+    //     if (ret > 0 && FD_ISSET(sockfd, &readfds))
+    //     {
+    //         if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
+    //         {
+    //             perror("recvfrom");
+    //             continue;
+    //         }
 
-                if (elapsed < min_time)
-                    min_time = elapsed;
-                if (elapsed > max_time)
-                    max_time = elapsed;
-                total_time += elapsed;
+    //         gettimeofday(&end, NULL);
 
-                double diff = elapsed - avg_time;
-                avg_time += diff / received;
-                sum_sq_diff += diff * (elapsed - avg_time);
-            }
-        }
-        else
-        {
-            /* timeout */
+    //         double elapsed = (end.tv_sec - start.tv_sec) * 1000.0;
+    //         elapsed += (end.tv_usec - start.tv_usec) / 1000.0;
 
-        }
+    //         struct ip *ip_hdr = (struct ip *)recvbuf;
+    //         struct icmp *recv_icmp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
 
-        gettimeofday(&end, NULL);
-        double time_spent = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_usec - start.tv_usec) / 1000.0;
-        if (time_spent < 1000.0)
-        {
-            usleep((1000.0 - time_spent) * 1000);
-        }
-    }
+    //         if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
+    //         {
+    //             received++;
+    //             if (!(flags & Q_FLAG))
+    //             {
+    //                 printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+    //                        PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
+    //             }
+
+    //             if (elapsed < min_time)
+    //                 min_time = elapsed;
+    //             if (elapsed > max_time)
+    //                 max_time = elapsed;
+    //             total_time += elapsed;
+
+    //             double diff = elapsed - avg_time;
+    //             avg_time += diff / received;
+    //             sum_sq_diff += diff * (elapsed - avg_time);
+    //         }
+    //     }
+    //     else
+    //     {
+    //         /* timeout */
+
+    //     }
+
+    //     gettimeofday(&end, NULL);
+    //     double time_spent = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_usec - start.tv_usec) / 1000.0;
+    //     if (time_spent < 1000.0)
+    //     {
+    //         usleep((1000.0 - time_spent) * 1000);
+    //     }
+    // }
 
     gettimeofday(&total_end, NULL);
 
