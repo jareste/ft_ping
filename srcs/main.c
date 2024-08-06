@@ -60,7 +60,6 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 break;
             case 'i':
                 *flags |= I_FLAG;
-                printf("%s\n", optarg);
                 if (optarg && isdigit(optarg[0]))
                 {
                     *interval = atof(optarg);
