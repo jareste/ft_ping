@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ft_ping.h>
+#include <ctype.h>
 
 void print_usage()
 {
@@ -35,7 +36,6 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                     fprintf(stderr, "Option -l contains garbage as argument: %s.\n", optarg);
                     fprintf(stderr, "This will become fatal error in the future.\n");
                 }
-                has_l = 1;
                 break;
             case 'n':
                 *flags |= N_FLAG;
@@ -57,7 +57,6 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                     fprintf(stderr, "Option -l contains garbage as argument: %s.\n", optarg);
                     fprintf(stderr, "This will become fatal error in the future.\n");
                 }
-                has_W = 1;
                 break;
             default:
                 print_usage();
