@@ -115,7 +115,12 @@ static void* m_send_ping(void *arg)
         }
         transmitted++;
         *args->transmitted = transmitted;
-        if ((preload <= 0) && !(flags & F_FLAG))
+        if (flags & F_FLAG)
+        {
+            /* even in flood mode, without usleep network colapses. */
+            usleep(1000);
+        }
+        else if ((preload <= 0))
         {
             usleep(1000 * 1000);
         }
