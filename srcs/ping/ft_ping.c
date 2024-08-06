@@ -39,6 +39,7 @@ typedef struct ping_args
     char* ip_str;
     int flags;
     int sockfd;
+    int preload;
 
 } ping_args_t;
 
@@ -88,6 +89,7 @@ static void* m_send_ping(void *arg)
     struct sockaddr_in addr = *args->addr;
     int transmitted = *args->transmitted;
     int sockfd = args->sockfd;
+    int preload = args->preload;
 
     while (pinging)
     {
@@ -111,7 +113,14 @@ static void* m_send_ping(void *arg)
         }
         transmitted++;
         *args->transmitted = transmitted;
-        usleep(1000 * 1000);
+        if (preload <= 0)
+        {
+            usleep(1000 * 1000);
+        }
+        else
+        {
+            preload--;
+        }
     }
 
     return NULL;
@@ -219,7 +228,6 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
     double min_time = INT_MAX, max_time = 0, total_time = 0;
     double sum_sq_diff = 0, avg_time = 0, mdev_time = 0;
 
-    UNUSED_PARAM(preload);
     UNUSED_PARAM(timeout_time);
 
     memset(&addr, 0, sizeof(addr));
@@ -253,8 +261,6 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
 
     printf("PING %s (%s) 56(84) bytes of data.\n", destination, ip_str);
 
-
-
     ping_args_t args = {
         .start = &start,
         .addr = &addr,
@@ -267,7 +273,8 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
         .avg_time = &avg_time,
         .ip_str = ip_str,
         .flags = flags,
-        .sockfd = sockfd
+        .sockfd = sockfd,
+        .preload = preload
     };
 
     pthread_create(&send_thread, NULL, m_send_ping, &args);
