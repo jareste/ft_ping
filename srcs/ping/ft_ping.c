@@ -40,7 +40,7 @@ typedef struct ping_args
     int flags;
     int sockfd;
     int preload;
-
+    int timeout_time;
 } ping_args_t;
 
 /*********************************/
@@ -152,11 +152,11 @@ static void* m_receive_ping(void *arg)
     double avg_time = *args->avg_time;
     double sum_sq_diff = *args->sum_sq_diff;
     int received = *args->received;
-
+    int timeout_time = args->timeout_time > 0 ? args->timeout_time : TIMEOUT;
 
     while (pinging)
     {
-        timeout.tv_sec = TIMEOUT;
+        timeout.tv_sec = timeout_time;
         timeout.tv_usec = 0;
         FD_ZERO(&readfds);
         FD_SET(sockfd, &readfds);
@@ -214,8 +214,7 @@ static void* m_receive_ping(void *arg)
         }
         else
         {
-            /* timeout, we don't care!!!! */
-
+            /* select timeout, ignore!!! */
         }
     }
 
@@ -234,8 +233,6 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
     int transmitted = 0, received = 0;
     double min_time = INT_MAX, max_time = 0, total_time = 0;
     double sum_sq_diff = 0, avg_time = 0, mdev_time = 0;
-
-    UNUSED_PARAM(timeout_time);
 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -281,7 +278,8 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
         .ip_str = ip_str,
         .flags = flags,
         .sockfd = sockfd,
-        .preload = preload
+        .preload = preload,
+        .timeout_time = timeout_time
     };
 
     pthread_create(&send_thread, NULL, m_send_ping, &args);
