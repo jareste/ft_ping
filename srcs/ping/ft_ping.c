@@ -245,16 +245,9 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
 
     gettimeofday(&total_start, NULL);
 
-/*
-ping: sock4.fd: 3 (socktype: SOCK_RAW), sock6.fd: 4 (socktype: SOCK_RAW), hints.ai_family: AF_UNSPEC
-
-ai->ai_family: AF_INET, ai->ai_canonname: 'google.es'
-PING google.es (142.250.200.131) 56(84) bytes of data.
-*/
-
-
     if (flags & V_FLAG)
     {
+        printf("siVVVVVVVV\n");
         printf("ping: sock4.fd: %d (socktype: SOCK_RAW), sock6.fd: Not applies.\n\n", sockfd);
         printf("ai->ai_family: AF_INET, ai->ai_canonname: '%s'", destination);
     }

@@ -19,6 +19,7 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
         {
             case 'v':
                 *flags |= V_FLAG;
+                printf("VAPPLIEEEDDDD\n");
                 break;
             case '?':
                 print_usage();
