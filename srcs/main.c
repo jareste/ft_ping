@@ -60,6 +60,7 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 break;
             case 'i':
                 *flags |= I_FLAG;
+                printf("%s\n", optarg);
                 if (optarg && isdigit(optarg[0]))
                 {
                     *interval = atof(optarg);
@@ -94,7 +95,7 @@ int main(int argc, char *argv[])
     int flags = 0;
     char *destination = NULL;
     int preload = 0;
-    double interval = 0;
+    double interval = 1;
     time_t timeout = 0;
 
     parse_argv(argc, argv, &flags, &destination, &preload, &timeout, &interval);
