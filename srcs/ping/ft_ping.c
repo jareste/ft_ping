@@ -90,6 +90,7 @@ static void* m_send_ping(void *arg)
     int transmitted = *args->transmitted;
     int sockfd = args->sockfd;
     int preload = args->preload;
+    int flags = args->flags;
 
     while (pinging)
     {
