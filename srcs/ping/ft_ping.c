@@ -247,9 +247,8 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
 
     if (flags & V_FLAG)
     {
-        printf("siVVVVVVVV\n");
         printf("ping: sock4.fd: %d (socktype: SOCK_RAW), sock6.fd: Not applies.\n\n", sockfd);
-        printf("ai->ai_family: AF_INET, ai->ai_canonname: '%s'", destination);
+        printf("ai->ai_family: AF_INET, ai->ai_canonname: '%s'\n", destination);
     }
 
     printf("PING %s (%s) 56(84) bytes of data.\n", destination, ip_str);
