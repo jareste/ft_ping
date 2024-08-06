@@ -21,14 +21,21 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 *flags |= V_FLAG;
                 break;
             case '?':
-                print_usage();
-                exit(0);
             case 'h':
                 print_usage();
                 exit(0);
             case 'l':
                 *flags |= L_FLAG;
-                *preload = atoi(optarg);
+                if (optarg)
+                {
+                    *preload = atoi(optarg);
+                }
+                else
+                {
+                    fprintf(stderr, "Option -l requires an argument.\n");
+                    print_usage();
+                    exit(1);
+                }
                 break;
             case 'n':
                 *flags |= N_FLAG;
@@ -41,7 +48,16 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 break;
             case 'W':
                 *flags |= W_FLAG;
-                *timeout = atoi(optarg);
+                if (optarg)
+                {
+                    *timeout = atoi(optarg);
+                }
+                else
+                {
+                    fprintf(stderr, "Option -W requires an argument.\n");
+                    print_usage();
+                    exit(1);
+                }
                 break;
             default:
                 print_usage();
