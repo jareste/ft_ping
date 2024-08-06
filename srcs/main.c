@@ -28,7 +28,6 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 exit(0);
             case 'l':
                 *flags |= L_FLAG;
-                printf("optarg:::%s\n", optarg);
                 *preload = atoi(optarg);
                 break;
             case 'n':
