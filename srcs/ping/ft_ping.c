@@ -113,11 +113,11 @@ static void* m_send_ping(void *arg)
         }
         transmitted++;
         *args->transmitted = transmitted;
-        if (preload <= 0)
+        if ((preload <= 0) && !(flags & F_FLAG))
         {
             usleep(1000 * 1000);
         }
-        else
+        else if (preload > 0)
         {
             preload--;
         }
