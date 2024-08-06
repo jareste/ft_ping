@@ -1,3 +1,7 @@
+/*********************************/
+/*            INCLUDE            */
+/*********************************/
+
 #include "ft_ping.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +17,10 @@
 #include <limits.h>
 #include <math.h>
 #include <pthread.h>
+
+/*********************************/
+/*            DEFINES            */
+/*********************************/
 
 #define PACKET_SIZE 64
 #define TIMEOUT 1
@@ -34,8 +42,19 @@ typedef struct ping_args
 
 } ping_args_t;
 
+/*********************************/
+/*            METHODS            */
+/*********************************/
 
-unsigned short checksum(void *b, int len)
+volatile int pinging = 1;
+
+static void m_handle_signal(int sig)
+{
+    UNUSED_PARAM(sig);
+    pinging = 0;
+}
+
+static unsigned short m_checksum(void *b, int len)
 {
     unsigned short *buf = b;
     unsigned int sum = 0;
@@ -57,15 +76,7 @@ unsigned short checksum(void *b, int len)
     return result;
 }
 
-volatile int pinging = 1;
-
-void handle_signal(int sig)
-{
-    UNUSED_PARAM(sig);
-    pinging = 0;
-}
-
-void* send_ping(void *arg)
+static void* m_send_ping(void *arg)
 {
     struct icmp icmp_pkt;
     char sendbuf[PACKET_SIZE];
@@ -89,7 +100,7 @@ void* send_ping(void *arg)
         icmp_pkt.icmp_cksum = 0;
         icmp_pkt.icmp_seq = seq++;
         icmp_pkt.icmp_id = getpid();
-        icmp_pkt.icmp_cksum = checksum(&icmp_pkt, sizeof(icmp_pkt));
+        icmp_pkt.icmp_cksum = m_checksum(&icmp_pkt, sizeof(icmp_pkt));
 
         memcpy(sendbuf, &icmp_pkt, sizeof(icmp_pkt));
 
@@ -107,7 +118,7 @@ void* send_ping(void *arg)
 
 }
 
-void* receive_ping(void *arg)
+static void* m_receive_ping(void *arg)
 {
     fd_set readfds;
     char recvbuf[PACKET_SIZE];
@@ -195,6 +206,7 @@ void* receive_ping(void *arg)
     return NULL;
 }
 
+/* public ping command entrypoint. */
 void ping(const char *destination, int flags, int preload, int timeout_time)
 {
     struct sockaddr_in addr;
@@ -229,9 +241,27 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
         exit(EXIT_FAILURE);
     }
 
-    signal(SIGINT, handle_signal);
+    signal(SIGINT, m_handle_signal);
 
     gettimeofday(&total_start, NULL);
+
+/*
+ping: sock4.fd: 3 (socktype: SOCK_RAW), sock6.fd: 4 (socktype: SOCK_RAW), hints.ai_family: AF_UNSPEC
+
+ai->ai_family: AF_INET, ai->ai_canonname: 'google.es'
+PING google.es (142.250.200.131) 56(84) bytes of data.
+*/
+
+
+    if (flags & V_FLAG)
+    {
+        printf("ping: sock4.fd: %d (socktype: SOCK_RAW), sock6.fd: Not applies.\n\n", sockfd);
+        printf("ai->ai_family: AF_INET, ai->ai_canonname: '%s'", destination);
+    }
+
+    printf("PING %s (%s) 56(84) bytes of data.\n", destination, ip_str);
+
+
 
     ping_args_t args = {
         .start = &start,
@@ -248,9 +278,8 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
         .sockfd = sockfd
     };
 
-
-    pthread_create(&send_thread, NULL, send_ping, &args);
-    pthread_create(&recv_thread, NULL, receive_ping, &args);
+    pthread_create(&send_thread, NULL, m_send_ping, &args);
+    pthread_create(&recv_thread, NULL, m_receive_ping, &args);
 
     pthread_join(send_thread, NULL);
     pthread_join(recv_thread, NULL);

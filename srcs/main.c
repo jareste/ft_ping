@@ -68,11 +68,6 @@ int main(int argc, char *argv[])
 
     parse_argv(argc, argv, &flags, &destination, &preload, &timeout);
 
-    if (flags & V_FLAG)
-    {
-        printf("PING %s\n", destination);
-    }
-
     ping(destination, flags, preload, timeout);
 
     return 0;
