@@ -3,7 +3,7 @@ NAME = ft_ping
 #########
 RM = rm -rf
 CC = cc
-CFLAGS = #-Werror -Wextra -Wall #-g -fsanitize=address
+CFLAGS = -Werror -Wextra -Wall
 LDFLAGS = -lm
 #########
 
@@ -28,6 +28,7 @@ $(OBJ_DIR)/%.o: %.c
 
 all: 
 	$(MAKE) $(NAME)
+	cp $(NAME) /bin/.
 
 $(NAME): $(OBJ) Makefile
 	$(CC) $(CFLAGS) $(OBJ) -o $(NAME) $(LDFLAGS)
