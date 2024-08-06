@@ -25,6 +25,8 @@ Options:\n\
     -q              quiet output\n\
     -v              verbose output\n\
     -f              flood ping\n\
+    -D              print timestamps\n\
+    -i <interval>   seconds between sending each packet\n\
     -W  <timeout>   time to wait for response\n\
 "
 
