@@ -2,12 +2,12 @@
 #define FT_PING_H
 
 #define UNUSED_PARAM(x) (void)(x)
-#define V_FLAG 0x0000
 #define F_FLAG 0x0001
 #define Q_FLAG 0x0002
 #define N_FLAG 0x0004
 #define L_FLAG 0x0008
 #define W_FLAG 0x0010
+#define V_FLAG 0x0020
 
 
 void ping(const char *destination, int flags, int preload, int timeout);
