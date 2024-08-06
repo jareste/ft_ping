@@ -13,7 +13,7 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "v?hlnqfW")) != -1)
+    while ((opt = getopt(argc, argv, "v?hl:nqfW:")) != -1)
     {
         switch (opt)
         {
