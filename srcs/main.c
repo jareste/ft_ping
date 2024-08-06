@@ -29,11 +29,11 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 if (optarg)
                 {
                     *preload = atoi(optarg);
+                    printf("l;:::%s\n", optarg);
                 }
                 else
                 {
                     fprintf(stderr, "Option -l requires an argument.\n");
-                    print_usage();
                     exit(1);
                 }
                 break;
@@ -51,11 +51,11 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 if (optarg)
                 {
                     *timeout = atoi(optarg);
+                    printf("W:::%s\n", optarg);
                 }
                 else
                 {
                     fprintf(stderr, "Option -W requires an argument.\n");
-                    print_usage();
                     exit(1);
                 }
                 break;
