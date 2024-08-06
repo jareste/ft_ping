@@ -18,7 +18,7 @@ Usage: ft_ping [options] <destination>\n\
 Options:\n\
     -?              display this help message\n\
     -h              display this help message\n\
-    -l  <preload>   send <preload> number of packages while waiting repliesn\
+    -l  <preload>   send <preload> number of packages while waiting replies\n\
     -n              no reverse DNS name resolution\n\
     -q              quiet output\n\
     -v              verbose output\n\
