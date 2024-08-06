@@ -127,7 +127,6 @@ void* receive_ping(void *arg)
     int received = *args->received;
 
 
-    UNUSED_PARAM(flags);
     while (pinging)
     {
         timeout.tv_sec = TIMEOUT;
@@ -159,11 +158,11 @@ void* receive_ping(void *arg)
                 received++;
                 *args->received = received;
                 
-                // if (!(flags & Q_FLAG))
-                // {
+                if (!(flags & Q_FLAG))
+                {
                     printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
                            PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
-                // }
+                }
 
                 if (elapsed < min_time)
                 {
@@ -188,11 +187,10 @@ void* receive_ping(void *arg)
         }
         else
         {
-            /* timeout */
+            /* timeout, we don't care!!!! */
 
         }
     }
-
 
     return NULL;
 }
@@ -257,95 +255,9 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
     pthread_join(send_thread, NULL);
     pthread_join(recv_thread, NULL);
 
-    // while (pinging)
-    // {
-    //     gettimeofday(&start, NULL);
-
-    //     memset(&icmp_pkt, 0, sizeof(icmp_pkt));
-    //     icmp_pkt.icmp_type = ICMP_ECHO;
-    //     icmp_pkt.icmp_code = 0;
-    //     icmp_pkt.icmp_cksum = 0;
-    //     icmp_pkt.icmp_seq = seq++;
-    //     icmp_pkt.icmp_id = getpid();
-    //     icmp_pkt.icmp_cksum = checksum(&icmp_pkt, sizeof(icmp_pkt));
-
-    //     memcpy(sendbuf, &icmp_pkt, sizeof(icmp_pkt));
-
-    //     if (sendto(sockfd, sendbuf, sizeof(icmp_pkt), 0, (struct sockaddr *)&addr, addrlen) <= 0)
-    //     {
-    //         perror("sendto");
-    //         exit(EXIT_FAILURE);
-    //     }
-    //     transmitted++;
-
-    //     if (flags & V_FLAG)
-    //     {
-    //         printf("Sent ICMP packet to %s\n", destination);
-    //     }
-
-    //     timeout.tv_sec = TIMEOUT;
-    //     timeout.tv_usec = 0;
-    //     FD_ZERO(&readfds);
-    //     FD_SET(sockfd, &readfds);
-
-    //     int ret = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
-    //     if (ret > 0 && FD_ISSET(sockfd, &readfds))
-    //     {
-    //         if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
-    //         {
-    //             perror("recvfrom");
-    //             continue;
-    //         }
-
-    //         gettimeofday(&end, NULL);
-
-    //         double elapsed = (end.tv_sec - start.tv_sec) * 1000.0;
-    //         elapsed += (end.tv_usec - start.tv_usec) / 1000.0;
-
-    //         struct ip *ip_hdr = (struct ip *)recvbuf;
-    //         struct icmp *recv_icmp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
-
-    //         if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
-    //         {
-    //             received++;
-    //             if (!(flags & Q_FLAG))
-    //             {
-    //                 printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
-    //                        PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
-    //             }
-
-    //             if (elapsed < min_time)
-    //                 min_time = elapsed;
-    //             if (elapsed > max_time)
-    //                 max_time = elapsed;
-    //             total_time += elapsed;
-
-    //             double diff = elapsed - avg_time;
-    //             avg_time += diff / received;
-    //             sum_sq_diff += diff * (elapsed - avg_time);
-    //         }
-    //     }
-    //     else
-    //     {
-    //         /* timeout */
-
-    //     }
-
-    //     gettimeofday(&end, NULL);
-    //     double time_spent = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_usec - start.tv_usec) / 1000.0;
-    //     if (time_spent < 1000.0)
-    //     {
-    //         usleep((1000.0 - time_spent) * 1000);
-    //     }
-    // }
-
     gettimeofday(&total_end, NULL);
 
     close(sockfd);
-
-    if (received > 0) {
-        mdev_time = sqrt(sum_sq_diff / received);
-    }
 
     printf("\n--- %s ping statistics ---\n", destination);
     printf("%d packets transmitted, %d received, %.0f%% packet loss, time %ldms\n",
@@ -353,6 +265,8 @@ void ping(const char *destination, int flags, int preload, int timeout_time)
            (total_end.tv_sec - total_start.tv_sec) * 1000 + (total_end.tv_usec - total_start.tv_usec) / 1000);
     if (received > 0)
     {
+        mdev_time = sqrt(sum_sq_diff / received);
+
         printf("rtt min/avg/max/mdev = %.3f/%.3f/%.3f/%.3f ms\n",
                min_time, total_time / received, max_time, mdev_time);
     }
