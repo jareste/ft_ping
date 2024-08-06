@@ -26,16 +26,16 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 exit(0);
             case 'l':
                 *flags |= L_FLAG;
-                if (optarg)
+                if (optarg && isdigit(optarg[0]))
                 {
                     *preload = atoi(optarg);
-                    printf("l;:::%s\n", optarg);
                 }
                 else
                 {
-                    fprintf(stderr, "Option -l requires an argument.\n");
-                    exit(1);
+                    fprintf(stderr, "Option -l contains garbage as argument: %s.\n", optarg);
+                    fprintf(stderr, "This will become fatal error in the future.\n");
                 }
+                has_l = 1;
                 break;
             case 'n':
                 *flags |= N_FLAG;
@@ -48,16 +48,16 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 break;
             case 'W':
                 *flags |= W_FLAG;
-                if (optarg)
+                if (optarg && isdigit(optarg[0]))
                 {
                     *timeout = atoi(optarg);
-                    printf("W:::%s\n", optarg);
                 }
                 else
                 {
-                    fprintf(stderr, "Option -W requires an argument.\n");
-                    exit(1);
+                    fprintf(stderr, "Option -l contains garbage as argument: %s.\n", optarg);
+                    fprintf(stderr, "This will become fatal error in the future.\n");
                 }
+                has_W = 1;
                 break;
             default:
                 print_usage();
