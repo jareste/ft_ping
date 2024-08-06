@@ -14,7 +14,7 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "v?hl:nqfW:")) != -1)
+    while ((opt = getopt(argc, argv, "v?hl:nqfDW:")) != -1)
     {
         switch (opt)
         {
@@ -57,6 +57,9 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                     fprintf(stderr, "Option -l contains garbage as argument: %s.\n", optarg);
                     fprintf(stderr, "This will become fatal error in the future.\n");
                 }
+                break;
+            case 'D':
+                *flags |= D_FLAG;
                 break;
             default:
                 print_usage();

@@ -187,6 +187,11 @@ static void* m_receive_ping(void *arg)
                 
                 if (!(flags & Q_FLAG))
                 {
+                    if (flags & D_FLAG)
+                    {
+                        printf("[%ld.%06ld]", end.tv_sec, end.tv_usec);
+                    }
+                    
                     printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
                            PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
                 }
