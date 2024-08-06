@@ -24,7 +24,7 @@
 
 #define PACKET_SIZE 64
 #define TIMEOUT 1
-#define SECONDS_TO_NANOSECONDS 1000 * 1000
+#define SECONDS_TO_NANOSECONDS * 1000 * 1000
 
 typedef struct ping_args
 {

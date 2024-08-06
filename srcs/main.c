@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 
     parse_argv(argc, argv, &flags, &destination, &preload, &timeout, &interval);
 
-    ping(destination, flags, preload, timeout);
+    ping(destination, flags, preload, timeout, interval);
 
     return 0;
 }

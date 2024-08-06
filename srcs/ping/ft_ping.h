@@ -12,7 +12,7 @@
 #define I_FLAG 0x0080
 
 
-void ping(const char *destination, int flags, int preload, int timeout);
+void ping(const char *destination, int flags, int preload, int timeout_time, double interval);
 
 #define USAGE "\
 Usage: ft_ping [options] <destination>\n\
