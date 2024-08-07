@@ -252,10 +252,17 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
 
+    if (flags & V_FLAG)
+    {
+        printf("ping: sock4.fd: 3 (socktype: SOCK_RAW), sock6.fd: Not applies.\n\n");
+        printf("ai->ai_family: AF_INET, ai->ai_canonname: '%s'\n", destination);
+    }
+
     if ((host = gethostbyname(destination)) == NULL)
     {
         fprintf(stderr, "ft_ping: %s: Name or service not known\n", destination);
         exit(EXIT_FAILURE);
+
     }
     memcpy(&addr.sin_addr, host->h_addr, host->h_length);
 
@@ -271,12 +278,6 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     signal(SIGINT, m_handle_signal);
 
     gettimeofday(&total_start, NULL);
-
-    if (flags & V_FLAG)
-    {
-        printf("ping: sock4.fd: %d (socktype: SOCK_RAW), sock6.fd: Not applies.\n\n", sockfd);
-        printf("ai->ai_family: AF_INET, ai->ai_canonname: '%s'\n", destination);
-    }
 
     printf("PING %s (%s) 56(84) bytes of data.\n", destination, ip_str);
 
