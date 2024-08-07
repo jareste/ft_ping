@@ -194,6 +194,7 @@ static void* m_receive_ping(void *arg)
             struct ip *ip_hdr = (struct ip *)recvbuf;
             struct icmp *recv_icmp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
 
+            printf("llega\n");
             if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
             {
                 received++;
