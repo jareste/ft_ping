@@ -254,7 +254,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
 
     if ((host = gethostbyname(destination)) == NULL)
     {
-        fprintf(stderr, "ft_ping: %d: Name or service not known\n", destination);
+        fprintf(stderr, "ft_ping: %s: Name or service not known\n", destination);
         exit(EXIT_FAILURE);
     }
     memcpy(&addr.sin_addr, host->h_addr, host->h_length);
