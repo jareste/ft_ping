@@ -264,7 +264,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
 
     if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0)
     {
-        fprintf(stderr, "ft_ping: Fatal error connecting socket.\n")
+        fprintf(stderr, "ft_ping: Fatal error connecting socket.\n");
         exit(EXIT_FAILURE);
     }
 
