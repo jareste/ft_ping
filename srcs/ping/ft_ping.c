@@ -177,7 +177,6 @@ static void* m_receive_ping(void *arg)
         {
             if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
             {
-                perror("recvfrom");
                 continue;
             }
 
@@ -255,7 +254,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
 
     if ((host = gethostbyname(destination)) == NULL)
     {
-        perror("gethostbyname");
+        fprintf(stderr, "ft_ping: %d: Name or service not known\n", destination);
         exit(EXIT_FAILURE);
     }
     memcpy(&addr.sin_addr, host->h_addr, host->h_length);
@@ -265,7 +264,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
 
     if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0)
     {
-        perror("socket");
+        fprintf(stderr, "ft_ping: Fatal error connecting socket.\n")
         exit(EXIT_FAILURE);
     }
 
