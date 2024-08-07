@@ -255,14 +255,12 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     if (flags & V_FLAG)
     {
         printf("ping: sock4.fd: 3 (socktype: SOCK_RAW), sock6.fd: Not applies.\n\n");
-        printf("ai->ai_family: AF_INET, ai->ai_canonname: '%s'\n", destination);
     }
 
     if ((host = gethostbyname(destination)) == NULL)
     {
         fprintf(stderr, "ft_ping: %s: Name or service not known\n", destination);
         exit(EXIT_FAILURE);
-
     }
     memcpy(&addr.sin_addr, host->h_addr, host->h_length);
 
@@ -273,6 +271,11 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     {
         fprintf(stderr, "ft_ping: Fatal error connecting socket.\n");
         exit(EXIT_FAILURE);
+    }
+
+    if (flags & V_FLAG)
+    {
+        printf("ai->ai_family: AF_INET, ai->ai_canonname: '%s'\n", destination);
     }
 
     signal(SIGINT, m_handle_signal);
