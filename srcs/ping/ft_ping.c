@@ -114,6 +114,10 @@ static void* m_send_ping(void *arg)
 
         memcpy(sendbuf, &icmp_pkt, sizeof(icmp_pkt));
 
+        int ttl = 5; /* max = 255 */
+        setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
+
+
         if (sendto(sockfd, sendbuf, sizeof(icmp_pkt), 0, (struct sockaddr *)&addr, addrlen) <= 0)
         {
             /* TCP network may be colapsed, let it have some rest. */
