@@ -44,7 +44,7 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                     *ttl = atoi(optarg);
                     if (*ttl > 255)
                     {
-                        fprintf(stderr, "ft_ping: invalid argument: '%d': out of range: 0 <= value <= 255", *ttl);
+                        fprintf(stderr, "ft_ping: invalid argument: '%d': out of range: 0 <= value <= 255\n", *ttl);
                         exit (1);
                     }
                 }

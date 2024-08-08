@@ -91,7 +91,7 @@ static void* m_send_ping(void *arg)
     struct icmp icmp_pkt;
     char sendbuf[PACKET_SIZE];
     int addrlen = sizeof(struct sockaddr_in);
-    int seq = 0;
+    int seq = 1;
     /**/
     ping_args_t* args = (ping_args_t*)arg;
     struct timeval start = *args->start;
@@ -251,6 +251,10 @@ static void* m_receive_ping(void *arg)
             
                 sum_sq_diff += diff * (elapsed - avg_time);
                 *args->sum_sq_diff = sum_sq_diff;
+            }
+            else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED && recv_icmp->icmp_id == getpid())
+            {
+                printf("From (%d) icmp_seq=%d Time to live exceeded", ip_str, recv_icmp->icmp_seq);
             }
         }
         else
