@@ -50,11 +50,14 @@ typedef struct ping_args
 /*********************************/
 
 volatile int pinging = 1;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void m_handle_signal(int sig)
 {
     UNUSED_PARAM(sig);
     pinging = 0;
+    pthread_cond_broadcast(&cond);
 }
 
 static unsigned short m_checksum(void *b, int len)
@@ -99,8 +102,11 @@ static void* m_send_ping(void *arg)
         interval = 0.0005;
     }
 
+    UNUSED_PARAM(flags);
+
     while (pinging)
     {
+        pthread_mutex_lock(&mutex);
         gettimeofday(&start, NULL);
         *args->start = start;
 
