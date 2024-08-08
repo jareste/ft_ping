@@ -253,7 +253,7 @@ static void* m_receive_ping(void *arg)
             }
             else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED && recv_icmp->icmp_id == getpid())
             {
-                printf("From (%d) icmp_seq=%d Time to live exceeded", ip_str, recv_icmp->icmp_seq);
+                printf("From (%s) icmp_seq=%d Time to live exceeded", ip_str, recv_icmp->icmp_seq);
             }
         }
         else
