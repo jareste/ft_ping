@@ -265,6 +265,7 @@ static void* m_receive_ping(void *arg)
                     int orig_ip_header_len = orig_ip_hdr->ip_hl << 2;
                     struct icmp *orig_icmp_hdr = (struct icmp *)((char *)orig_ip_hdr + orig_ip_header_len);
 
+                    printf("pid:::%d, origpid:::%d\n", orig_icmp_hdr->icmp_id, getpid());
                     if (orig_icmp_hdr->icmp_id == getpid())
                     {
                         char src_ip_str[INET_ADDRSTRLEN];
