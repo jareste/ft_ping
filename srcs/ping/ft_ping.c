@@ -175,7 +175,7 @@ static void* m_receive_ping(void *arg)
     char recvbuf[PACKET_SIZE + sizeof(struct ip)];
     socklen_t len = sizeof(struct sockaddr_in);
     struct timeval end, timeout;
-    /**/
+    
     ping_args_t* args = (ping_args_t*)arg;
     struct sockaddr_in addr = *args->addr;
     int sockfd = args->sockfd;
@@ -199,89 +199,80 @@ static void* m_receive_ping(void *arg)
 
         int max_fd = (sockfd > pipefd[0]) ? sockfd : pipefd[0];
         int ret = select(max_fd + 1, &readfds, NULL, NULL, &timeout);
-        if (ret > 0 && FD_ISSET(sockfd, &readfds))
+        if (ret > 0)
         {
             if (FD_ISSET(pipefd[0], &readfds)) {
                 break;
             }
 
-            if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
+            if (FD_ISSET(sockfd, &readfds))
             {
-                continue;
-            }
-
-            gettimeofday(&end, NULL);
-
-            struct timeval start = *args->start;
-
-            double elapsed = (end.tv_sec - start.tv_sec) * 1000.0;
-            elapsed += (end.tv_usec - start.tv_usec) / 1000.0;
-
-            struct ip *ip_hdr = (struct ip *)recvbuf;
-            struct icmp *recv_icmp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
-
-            if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
-            {
-                received++;
-                *args->received = received;
-                
-                if (!(flags & Q_FLAG))
+                if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
                 {
-                    if (flags & D_FLAG)
+                    continue;
+                }
+
+                gettimeofday(&end, NULL);
+
+                struct timeval start = *args->start;
+
+                double elapsed = (end.tv_sec - start.tv_sec) * 1000.0;
+                elapsed += (end.tv_usec - start.tv_usec) / 1000.0;
+
+                struct ip *ip_hdr = (struct ip *)recvbuf;
+                int ip_header_len = ip_hdr->ip_hl << 2;
+                struct icmp *recv_icmp = (struct icmp *)(recvbuf + ip_header_len);
+
+                if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
+                {
+                    received++;
+                    *args->received = received;
+                    
+                    if (!(flags & Q_FLAG))
                     {
-                        printf("[%ld.%06ld]", end.tv_sec, end.tv_usec);
+                        if (flags & D_FLAG)
+                        {
+                            printf("[%ld.%06ld] ", end.tv_sec, end.tv_usec);
+                        }
+
+                        printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+                               PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
                     }
 
-                    printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
-                           PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
+                    if (elapsed < min_time)
+                    {
+                        min_time = elapsed;
+                        *args->min_time = min_time;
+                    }
+                    if (elapsed > max_time)
+                    {
+                        max_time = elapsed;
+                        *args->max_time = max_time;
+                    }
+                    total_time += elapsed;
+                    *args->total_time = total_time;
+
+                    double diff = elapsed - avg_time;
+                    avg_time += diff / received;
+                    *args->avg_time = avg_time;
+                
+                    sum_sq_diff += diff * (elapsed - avg_time);
+                    *args->sum_sq_diff = sum_sq_diff;
                 }
-
-                if (elapsed < min_time)
+                else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
                 {
-                    min_time = elapsed;
-                    *args->min_time = min_time;
-                }
-                if (elapsed > max_time)
-                {
-                    max_time = elapsed;
-                    *args->max_time = max_time;
-                }
-                total_time += elapsed;
-                *args->total_time = total_time;
+                    struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 1);
+                    int orig_ip_header_len = orig_ip_hdr->ip_hl << 2;
+                    struct icmp *orig_icmp_hdr = (struct icmp *)((char *)orig_ip_hdr + orig_ip_header_len);
 
-                double diff = elapsed - avg_time;
-                avg_time += diff / received;
-                *args->avg_time = avg_time;
-            
-                sum_sq_diff += diff * (elapsed - avg_time);
-                *args->sum_sq_diff = sum_sq_diff;
-            }
-            else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
-            {
-                struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 1);
-                struct icmp *orig_icmp_hdr = (struct icmp *)((char *)orig_ip_hdr + (orig_ip_hdr->ip_hl << 2));
+                    if (orig_icmp_hdr->icmp_id == getpid())
+                    {
+                        char src_ip_str[INET_ADDRSTRLEN];
+                        inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
 
-                if (orig_icmp_hdr->icmp_id == getpid())
-                {
-                    char src_ip_str[INET_ADDRSTRLEN];
-                    inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
-
-                    printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                            src_ip_str, src_ip_str, orig_icmp_hdr->icmp_seq);
-                }
-            }
-            else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
-            {
-                struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 1);
-                struct icmp *orig_icmp_hdr = (struct icmp *)((char *)orig_ip_hdr + (orig_ip_hdr->ip_hl << 2));
-
-                if (orig_icmp_hdr->icmp_id == getpid())
-                {
-                    char src_ip_str[INET_ADDRSTRLEN];
-                    inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
-
-                    printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                            src_ip_str, src_ip_str, orig_icmp_hdr->icmp_seq);
+                        printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
+                               src_ip_str, src_ip_str, orig_icmp_hdr->icmp_seq);
+                    }
                 }
             }
         }
