@@ -24,6 +24,7 @@
 
 #define PACKET_SIZE 64
 #define TIMEOUT 1
+#define INTERVAL 1
 #define SECONDS_TO_NANOSECONDS * 1000 * 1000
 
 typedef struct ping_args
@@ -96,7 +97,7 @@ static void* m_send_ping(void *arg)
     int sockfd = args->sockfd;
     int preload = args->preload;
     int flags = args->flags;
-    double interval = args->interval >= 0 ? args->interval : 1;
+    double interval = args->interval >= 0 ? args->interval : INTERVAL;
     if (interval < 0.0005)
     {
         interval = 0.0005;
@@ -127,7 +128,8 @@ static void* m_send_ping(void *arg)
         if (sendto(sockfd, sendbuf, sizeof(icmp_pkt), 0, (struct sockaddr *)&addr, addrlen) <= 0)
         {
             /* TCP network may be colapsed, let it have some rest. */
-            usleep(50);
+            usleep(50000);
+            pthread_mutex_unlock(&mutex);
             continue;
         }
         transmitted++;
@@ -135,9 +137,17 @@ static void* m_send_ping(void *arg)
 
         struct timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
-        // ts.tv_sec += 1;
-        ts.tv_nsec += interval SECONDS_TO_NANOSECONDS;
 
+        ts.tv_sec += (int)interval;
+        ts.tv_nsec += (interval - (int)interval) * 1e9;
+
+        // Normalize timespec structure
+        if (ts.tv_nsec >= 1e9)
+        {
+            ts.tv_sec += 1;
+            ts.tv_nsec -= 1e9;
+        }
+        
         if (preload <= 0)
         {
             pthread_cond_timedwait(&cond, &mutex, &ts);
@@ -148,27 +158,6 @@ static void* m_send_ping(void *arg)
         }
 
         pthread_mutex_unlock(&mutex);
-
-        // if (flags & I_FLAG)
-        // {
-        //     usleep(interval SECONDS_TO_NANOSECONDS);
-        // }
-        // else if (flags & F_FLAG)
-        // {
-        //     /* even in flood mode, without usleep network colapses. */
-        //     usleep(500);
-        // }
-        // else if ((preload <= 0))
-        // {
-        //     usleep(interval SECONDS_TO_NANOSECONDS);
-        // }
-        // else if (preload > 0)
-        // {
-        //     preload--;
-        // }
-
-
-
     }
 
     return NULL;
