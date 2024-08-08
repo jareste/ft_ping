@@ -197,9 +197,14 @@ static void* m_receive_ping(void *arg)
         FD_SET(sockfd, &readfds);
         FD_SET(pipefd[0], &readfds);
 
-        int ret = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
+        int max_fd = (sockfd > pipefd[0]) ? sockfd : pipefd[0];
+        int ret = select(max_fd + 1, &readfds, NULL, NULL, &timeout);
         if (ret > 0 && FD_ISSET(sockfd, &readfds))
         {
+            if (FD_ISSET(pipefd[0], &readfds)) {
+                break;
+            }
+
             if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
             {
                 continue;
@@ -253,7 +258,17 @@ static void* m_receive_ping(void *arg)
             }
             else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
             {
-                printf("From (%s) icmp_seq=%d Time to live exceeded\n", ip_str, recv_icmp->icmp_seq);
+                struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 1);
+                struct icmp *orig_icmp_hdr = (struct icmp *)((char *)orig_ip_hdr + (orig_ip_hdr->ip_hl << 2));
+
+                if (orig_icmp_hdr->icmp_id == getpid())
+                {
+                    char src_ip_str[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
+
+                    printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
+                            src_ip_str, src_ip_str, orig_icmp_hdr->icmp_seq);
+                }
             }
         }
         else
