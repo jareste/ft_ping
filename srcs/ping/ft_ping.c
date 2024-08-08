@@ -147,7 +147,7 @@ static void* m_send_ping(void *arg)
             ts.tv_sec += 1;
             ts.tv_nsec -= 1e9;
         }
-        
+
         if (preload <= 0)
         {
             pthread_cond_timedwait(&cond, &mutex, &ts);
@@ -326,6 +326,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     pthread_create(&recv_thread, NULL, m_receive_ping, &args);
 
     pthread_join(send_thread, NULL);
+    printf("send terminated\n");
     pthread_join(recv_thread, NULL);
 
     gettimeofday(&total_end, NULL);
