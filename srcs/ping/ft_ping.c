@@ -61,7 +61,7 @@ static void m_handle_signal(int sig)
     UNUSED_PARAM(sig);
     pinging = 0;
     pthread_cond_broadcast(&cond);
-    write(pipefd[1], "", 1);
+    write(pipefd[1], "\n", 1);
 }
 
 static unsigned short m_checksum(void *b, int len)
