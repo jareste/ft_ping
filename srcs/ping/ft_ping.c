@@ -268,10 +268,24 @@ static void* m_receive_ping(void *arg)
                     printf("pid:::%d, origpid:::%d\n", orig_icmp_hdr->icmp_id, getpid());
 
                     char src_ip_str[INET_ADDRSTRLEN];
+                    char host[NI_MAXHOST];
                     inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
 
-                    printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                            src_ip_str, src_ip_str, orig_icmp_hdr->icmp_seq);
+                    // Perform reverse DNS lookup
+                    struct sockaddr_in sa;
+                    sa.sin_family = AF_INET;
+                    inet_pton(AF_INET, src_ip_str, &sa.sin_addr);
+
+                    if (getnameinfo((struct sockaddr*)&sa, sizeof(sa), host, sizeof(host), NULL, 0, 0) == 0)
+                    {
+                        printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
+                                host, src_ip_str, orig_icmp_hdr->icmp_seq);
+                    }
+                    else
+                    {
+                        printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
+                                src_ip_str, src_ip_str, orig_icmp_hdr->icmp_seq);
+                    }
                 }
             }
         }
