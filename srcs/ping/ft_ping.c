@@ -53,12 +53,14 @@ typedef struct ping_args
 volatile int pinging = 1;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+int pipefd[2];
 
 static void m_handle_signal(int sig)
 {
     UNUSED_PARAM(sig);
     pinging = 0;
     pthread_cond_broadcast(&cond);
+    write(pipefd[1], "", 1);
 }
 
 static unsigned short m_checksum(void *b, int len)
@@ -123,7 +125,6 @@ static void* m_send_ping(void *arg)
 
         int ttl = 5; /* max = 255 */
         setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
-
 
         if (sendto(sockfd, sendbuf, sizeof(icmp_pkt), 0, (struct sockaddr *)&addr, addrlen) <= 0)
         {
@@ -190,6 +191,7 @@ static void* m_receive_ping(void *arg)
         timeout.tv_usec = 0;
         FD_ZERO(&readfds);
         FD_SET(sockfd, &readfds);
+        FD_SET(pipefd[0], &readfds);
 
         int ret = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
         if (ret > 0 && FD_ISSET(sockfd, &readfds))
@@ -209,7 +211,7 @@ static void* m_receive_ping(void *arg)
             struct ip *ip_hdr = (struct ip *)recvbuf;
             struct icmp *recv_icmp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
 
-            printf("llega%d\n", recv_icmp->icmp_type);
+            // printf("llega%d\n", recv_icmp->icmp_type);
             if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
             {
                 received++;
