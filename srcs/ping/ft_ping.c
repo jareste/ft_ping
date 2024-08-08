@@ -367,7 +367,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
 
     pthread_join(send_thread, NULL);
     printf("sendstopped\n");
-    pthread_join(recv_thread, NULL);
+    // pthread_join(recv_thread, NULL);
 
     gettimeofday(&total_end, NULL);
 
