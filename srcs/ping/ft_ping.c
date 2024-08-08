@@ -215,7 +215,6 @@ static void* m_receive_ping(void *arg)
             struct ip *ip_hdr = (struct ip *)recvbuf;
             struct icmp *recv_icmp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
 
-            printf("type:::%d, %d\n", recv_icmp->icmp_type, ICMP_TIME_EXCEEDED);
             if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
             {
                 received++;
@@ -254,7 +253,7 @@ static void* m_receive_ping(void *arg)
             }
             else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
             {
-                printf("From (%s) icmp_seq=%d Time to live exceeded", ip_str, recv_icmp->icmp_seq);
+                printf("From (%s) icmp_seq=%d Time to live exceeded\n", ip_str, recv_icmp->icmp_seq);
             }
         }
         else
