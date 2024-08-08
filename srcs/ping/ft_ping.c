@@ -172,7 +172,7 @@ static void* m_send_ping(void *arg)
 static void* m_receive_ping(void *arg)
 {
     fd_set readfds;
-    char recvbuf[PACKET_SIZE + sizeof(struct ip)];
+    char recvbuf[1024];
     socklen_t len = sizeof(struct sockaddr_in);
     struct timeval end, timeout;
     
