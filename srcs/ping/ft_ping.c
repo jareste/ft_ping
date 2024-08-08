@@ -211,7 +211,7 @@ static void* m_receive_ping(void *arg)
             struct ip *ip_hdr = (struct ip *)recvbuf;
             struct icmp *recv_icmp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
 
-            // printf("llega%d\n", recv_icmp->icmp_type);
+            printf("type::::%d\n", recv_icmp->icmp_type == ICMP_ECHOREPLY);
             if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
             {
                 received++;
@@ -328,7 +328,6 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     pthread_create(&recv_thread, NULL, m_receive_ping, &args);
 
     pthread_join(send_thread, NULL);
-    printf("send terminated\n");
     pthread_join(recv_thread, NULL);
 
     gettimeofday(&total_end, NULL);
