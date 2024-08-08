@@ -201,6 +201,9 @@ static void* m_receive_ping(void *arg)
         int ret = select(max_fd + 1, &readfds, NULL, NULL, &timeout);
         if (ret > 0)
         {
+            if (!pinging)
+                    break;
+                
             if (FD_ISSET(pipefd[0], &readfds)) {
                 break;
             }
@@ -211,6 +214,9 @@ static void* m_receive_ping(void *arg)
                 {
                     continue;
                 }
+                
+                if (!pinging)
+                    break;
 
                 gettimeofday(&end, NULL);
 
