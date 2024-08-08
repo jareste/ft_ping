@@ -44,6 +44,7 @@ typedef struct ping_args
     int preload;
     int timeout_time;
     double interval;
+    int ttl;
 } ping_args_t;
 
 /*********************************/
@@ -99,6 +100,7 @@ static void* m_send_ping(void *arg)
     int sockfd = args->sockfd;
     int preload = args->preload;
     int flags = args->flags;
+    int ttl = args->ttl;
     double interval = args->interval >= 0 ? args->interval : INTERVAL;
     if (interval < 0.0005)
     {
@@ -123,9 +125,11 @@ static void* m_send_ping(void *arg)
 
         memcpy(sendbuf, &icmp_pkt, sizeof(icmp_pkt));
 
-        // int ttl = 5; /* max = 255 */
-        // setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
-
+        if (flags & T_FLAG)
+        {
+            ttl = args->ttl;
+            setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
+        }
         if (sendto(sockfd, sendbuf, sizeof(icmp_pkt), 0, (struct sockaddr *)&addr, addrlen) <= 0)
         {
             /* TCP network may be colapsed, let it have some rest. */
@@ -259,7 +263,7 @@ static void* m_receive_ping(void *arg)
 }
 
 /* public ping command entrypoint. */
-void ping(const char *destination, int flags, int preload, int timeout_time, double interval)
+void ping(const char *destination, int flags, int preload, int timeout_time, double interval, int ttl)
 {
     struct sockaddr_in addr;
     struct hostent *host;
@@ -321,7 +325,8 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
         .sockfd = sockfd,
         .preload = preload,
         .timeout_time = timeout_time,
-        .interval = interval
+        .interval = interval,
+        .ttl = ttl
     };
 
     pthread_create(&send_thread, NULL, m_send_ping, &args);

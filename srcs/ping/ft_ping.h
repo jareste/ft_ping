@@ -10,9 +10,10 @@
 #define V_FLAG 0x0020
 #define D_FLAG 0x0040
 #define I_FLAG 0x0080
+#define T_FLAG 0x0100
 
 
-void ping(const char *destination, int flags, int preload, int timeout_time, double interval);
+void ping(const char *destination, int flags, int preload, int timeout_time, double interval, int ttl);
 
 #define USAGE "\
 Usage: ft_ping [options] <destination>\n\

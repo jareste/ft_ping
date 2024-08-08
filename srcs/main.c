@@ -10,11 +10,11 @@ void print_usage()
     printf(USAGE);
 }
 
-void parse_argv(int argc, char *argv[], int *flags, char **destination, int *preload, time_t *timeout, double* interval)
+void parse_argv(int argc, char *argv[], int *flags, char **destination, int *preload, time_t *timeout, double* interval, int *ttl)
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "v?hl:nqfi:DW:")) != -1)
+    while ((opt = getopt(argc, argv, "v?hl:nqft:i:DW:")) != -1)
     {
         switch (opt)
         {
@@ -34,6 +34,23 @@ void parse_argv(int argc, char *argv[], int *flags, char **destination, int *pre
                 else
                 {
                     fprintf(stderr, "Option -l contains garbage as argument: %s.\n", optarg);
+                    fprintf(stderr, "This will become fatal error in the future.\n");
+                }
+                break;
+            case 't':
+                *flags |= T_FLAG;
+                if (optarg && isdigit(optarg[0]))
+                {
+                    *ttl = atoi(optarg);
+                    if (*ttl > 255)
+                    {
+                        fprintf(stderr, "ft_ping: invalid argument: '%d': out of range: 0 <= value <= 255", *ttl);
+                        exit (1);
+                    }
+                }
+                else
+                {
+                    fprintf(stderr, "Option -t contains garbage as argument: %s.\n", optarg);
                     fprintf(stderr, "This will become fatal error in the future.\n");
                 }
                 break;
@@ -96,10 +113,11 @@ int main(int argc, char *argv[])
     int preload = 0;
     double interval = 1;
     time_t timeout = 0;
+    int ttl = 255;
 
-    parse_argv(argc, argv, &flags, &destination, &preload, &timeout, &interval);
+    parse_argv(argc, argv, &flags, &destination, &preload, &timeout, &interval, &ttl);
 
-    ping(destination, flags, preload, timeout, interval);
+    ping(destination, flags, preload, timeout, interval, ttl);
 
     return 0;
 }
