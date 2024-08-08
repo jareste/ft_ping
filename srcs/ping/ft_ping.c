@@ -261,30 +261,33 @@ static void* m_receive_ping(void *arg)
                 }
                 else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
                 {
+                    // The ICMP Time Exceeded message includes the original IP header and the first 8 bytes of the original datagram's payload
                     struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 1);
                     int orig_ip_header_len = orig_ip_hdr->ip_hl << 2;
                     struct icmp *orig_icmp_hdr = (struct icmp *)((char *)orig_ip_hdr + orig_ip_header_len);
 
-                    printf("pid:::%d, origpid:::%d\n", orig_icmp_hdr->icmp_id, getpid());
+                    // if (orig_icmp_hdr->icmp_id == getpid())
+                    // {
+                        char src_ip_str[INET_ADDRSTRLEN];
+                        char host[NI_MAXHOST];
+                        inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
 
-                    char src_ip_str[INET_ADDRSTRLEN];
-                    char host[NI_MAXHOST];
-                    inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
+                        // Perform reverse DNS lookup
+                        struct sockaddr_in sa;
+                        sa.sin_family = AF_INET;
+                        inet_pton(AF_INET, src_ip_str, &sa.sin_addr);
 
-                    struct sockaddr_in sa;
-                    sa.sin_family = AF_INET;
-                    inet_pton(AF_INET, src_ip_str, &sa.sin_addr);
-
-                    if (getnameinfo((struct sockaddr*)&sa, sizeof(sa), host, sizeof(host), NULL, 0, 0) == 0)
-                    {
-                        printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                                host, src_ip_str, recv_icmp->icmp_seq);
-                    }
-                    else
-                    {
-                        printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                                src_ip_str, src_ip_str, recv_icmp->icmp_seq);
-                    }
+                        if (getnameinfo((struct sockaddr*)&sa, sizeof(sa), host, sizeof(host), NULL, 0, 0) == 0)
+                        {
+                            printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
+                                   host, src_ip_str, orig_icmp_hdr->icmp_seq);
+                        }
+                        else
+                        {
+                            printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
+                                   src_ip_str, src_ip_str, orig_icmp_hdr->icmp_seq);
+                        }
+                    // }
                 }
             }
         }
