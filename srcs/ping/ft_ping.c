@@ -126,23 +126,43 @@ static void* m_send_ping(void *arg)
         }
         transmitted++;
         *args->transmitted = transmitted;
-        if (flags & I_FLAG)
+
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        // ts.tv_sec += 1;
+        ts.tv_nsec += interval SECONDS_TO_NANOSECONDS;
+
+        if (preload <= 0)
         {
-            usleep(interval SECONDS_TO_NANOSECONDS);
+            pthread_cond_timedwait(&cond, &mutex, &ts);
         }
-        else if (flags & F_FLAG)
-        {
-            /* even in flood mode, without usleep network colapses. */
-            usleep(500);
-        }
-        else if ((preload <= 0))
-        {
-            usleep(interval SECONDS_TO_NANOSECONDS);
-        }
-        else if (preload > 0)
+        else
         {
             preload--;
         }
+
+        pthread_mutex_unlock(&mutex);
+
+        // if (flags & I_FLAG)
+        // {
+        //     usleep(interval SECONDS_TO_NANOSECONDS);
+        // }
+        // else if (flags & F_FLAG)
+        // {
+        //     /* even in flood mode, without usleep network colapses. */
+        //     usleep(500);
+        // }
+        // else if ((preload <= 0))
+        // {
+        //     usleep(interval SECONDS_TO_NANOSECONDS);
+        // }
+        // else if (preload > 0)
+        // {
+        //     preload--;
+        // }
+
+
+
     }
 
     return NULL;
