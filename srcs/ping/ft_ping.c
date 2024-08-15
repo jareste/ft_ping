@@ -271,9 +271,6 @@ static void* m_receive_ping(void *arg)
                 }
                 else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
                 {
-                    if (awake %2 != 0)
-                        continue;
-                    
                     errors++;
                     *args->errors = errors;
 
