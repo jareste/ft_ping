@@ -33,6 +33,7 @@ typedef struct ping_args
     struct sockaddr_in* addr;
     int* transmitted;
     int* received;
+    int* errors;
     double* min_time;
     double* max_time;
     double* total_time;
@@ -187,6 +188,7 @@ static void* m_receive_ping(void *arg)
     double avg_time = *args->avg_time;
     double sum_sq_diff = *args->sum_sq_diff;
     int received = *args->received;
+    int errors = *args->errors;
     int timeout_time = args->timeout_time > 0 ? args->timeout_time : TIMEOUT;
     unsigned int awake = 0;
 
@@ -269,6 +271,12 @@ static void* m_receive_ping(void *arg)
                 }
                 else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
                 {
+                    if (awake %2 != 0)
+                        continue;
+                    
+                    errors++;
+                    *args->errors = errors;
+
                     char src_ip_str[INET_ADDRSTRLEN];
                     char host[NI_MAXHOST];
                     inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
@@ -309,7 +317,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     pthread_t recv_thread;
     pthread_t send_thread;
     struct timeval start, total_start, total_end;
-    int transmitted = 0, received = 0;
+    int transmitted = 0, received = 0, errors = 0;
     double min_time = INT_MAX, max_time = 0, total_time = 0;
     double sum_sq_diff = 0, avg_time = 0, mdev_time = 0;
 
@@ -353,6 +361,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
         .addr = &addr,
         .transmitted = &transmitted,
         .received = &received,
+        .errors = &errors,
         .min_time = &min_time,
         .max_time = &max_time,
         .total_time = &total_time,
@@ -377,8 +386,11 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     close(sockfd);
 
     printf("\n--- %s ping statistics ---\n", destination);
-    printf("%d packets transmitted, %d received, %.0f%% packet loss, time %ldms\n",
-           transmitted, received, (transmitted - received) / (double)transmitted * 100.0,
+    printf("%d packets transmitted, %d received," transmitted, received);
+    if (errors > 0)
+        printf(" +%d errors,", errors);
+    printf("%.0f%% packet loss, time %ldms\n",
+           (transmitted - received) / (double)transmitted * 100.0,
            (total_end.tv_sec - total_start.tv_sec) * 1000 + (total_end.tv_usec - total_start.tv_usec) / 1000);
     if (received > 0)
     {
