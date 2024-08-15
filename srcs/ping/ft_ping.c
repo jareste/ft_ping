@@ -267,7 +267,8 @@ static void* m_receive_ping(void *arg)
                 }
                 else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
                 {
-                    struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 8);  // The original IP header starts after 8 bytes of ICMP data
+                    // The ICMP Time Exceeded message includes the original IP header and the first 8 bytes of the original datagram's payload
+                    struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 8);  // 8 bytes after ICMP header
                     int orig_ip_header_len = orig_ip_hdr->ip_hl << 2;
                     struct icmp *orig_icmp_hdr = (struct icmp *)((char *)orig_ip_hdr + orig_ip_header_len);
 
@@ -300,6 +301,7 @@ static void* m_receive_ping(void *arg)
 
     return NULL;
 }
+
 
 /* public ping command entrypoint. */
 void ping(const char *destination, int flags, int preload, int timeout_time, double interval, int ttl)
