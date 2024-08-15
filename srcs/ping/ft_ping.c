@@ -387,7 +387,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
 
     printf("\n--- %s ping statistics ---\n", destination);
     printf("%d packets transmitted, %d received," transmitted, received);
-    if (errors > 0)
+    // if (errors > 0)
         printf(" +%d errors,", errors);
     printf("%.0f%% packet loss, time %ldms\n",
            (transmitted - received) / (double)transmitted * 100.0,
