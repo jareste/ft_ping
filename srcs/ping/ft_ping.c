@@ -188,6 +188,7 @@ static void* m_receive_ping(void *arg)
     double sum_sq_diff = *args->sum_sq_diff;
     int received = *args->received;
     int timeout_time = args->timeout_time > 0 ? args->timeout_time : TIMEOUT;
+    unsigned int awake = 0;
 
     while (pinging)
     {
@@ -218,6 +219,7 @@ static void* m_receive_ping(void *arg)
                 if (!pinging)
                     break;
 
+                awake++;
                 gettimeofday(&end, NULL);
 
                 struct timeval start = *args->start;
@@ -283,12 +285,12 @@ static void* m_receive_ping(void *arg)
                     if (getnameinfo((struct sockaddr*)&sa, sizeof(sa), host, sizeof(host), NULL, 0, 0) == 0)
                     {
                         printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                               host, src_ip_str, ntohs(orig_icmp_hdr->icmp_seq));
+                               host, src_ip_str, awake);
                     }
                     else
                     {
                         printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                               src_ip_str, src_ip_str, ntohs(orig_icmp_hdr->icmp_seq));
+                               src_ip_str, src_ip_str, awake);
                     }
                 }
             }
