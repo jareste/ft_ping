@@ -383,9 +383,9 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     close(sockfd);
 
     printf("\n--- %s ping statistics ---\n", destination);
-    printf("%d packets transmitted, %d received,", transmitted, received);
+    printf("%d packets transmitted, %d received, ", transmitted, received);
     if (errors > 0)
-        printf(" +%d errors,", errors);
+        printf("+%d errors, ", errors);
     printf("%.0f%% packet loss, time %ldms\n",
            (transmitted - received) / (double)transmitted * 100.0,
            (total_end.tv_sec - total_start.tv_sec) * 1000 + (total_end.tv_usec - total_start.tv_usec) / 1000);
