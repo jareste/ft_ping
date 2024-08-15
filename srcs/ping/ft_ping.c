@@ -270,7 +270,7 @@ static void* m_receive_ping(void *arg)
                     struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 1);
                     int orig_ip_header_len = orig_ip_hdr->ip_hl << 2;
                     struct icmp *orig_icmp_hdr = (struct icmp *)((char *)orig_ip_hdr + orig_ip_header_len);
-
+struct icmp *recv_icmp = (struct icmp *)(recvbuf + ip_header_len);
                     char src_ip_str[INET_ADDRSTRLEN];
                     char host[NI_MAXHOST];
                     inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
@@ -282,12 +282,12 @@ static void* m_receive_ping(void *arg)
                     if (getnameinfo((struct sockaddr*)&sa, sizeof(sa), host, sizeof(host), NULL, 0, 0) == 0)
                     {
                         printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                                host, src_ip_str, orig_icmp_hdr->icmp_seq);
+                                host, src_ip_str, recv_icmp->icmp_seq);
                     }
                     else
                     {
                         printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                                src_ip_str, src_ip_str, orig_icmp_hdr->icmp_seq);
+                                src_ip_str, src_ip_str, recv_icmp->icmp_seq);
                     }
                 }
             }
@@ -319,7 +319,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
 
     if (flags & V_FLAG)
     {
-        printf("ping: sock4.fd: 3 (socktype: SOCK_RAW), sock6.fd: Not applies.\n\n");
+        printf("ping: sock4.fd: 3 (socktype: SOCK_RAW), sock6.fd: Not applies, hints.ai_family: AF_UNSPEC\n\n");
     }
 
     if ((host = gethostbyname(destination)) == NULL)
