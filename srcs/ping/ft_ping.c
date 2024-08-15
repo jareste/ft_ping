@@ -172,10 +172,10 @@ static void* m_send_ping(void *arg)
 static void* m_receive_ping(void *arg)
 {
     fd_set readfds;
-    char recvbuf[1024];
+    char recvbuf[1024];  // Buffer size to accommodate large packets
     socklen_t len = sizeof(struct sockaddr_in);
     struct timeval end, timeout;
-    
+
     ping_args_t* args = (ping_args_t*)arg;
     struct sockaddr_in addr = *args->addr;
     int sockfd = args->sockfd;
@@ -202,8 +202,8 @@ static void* m_receive_ping(void *arg)
         if (ret > 0)
         {
             if (!pinging)
-                    break;
-                
+                break;
+
             if (FD_ISSET(pipefd[0], &readfds)) {
                 break;
             }
@@ -214,7 +214,7 @@ static void* m_receive_ping(void *arg)
                 {
                     continue;
                 }
-                
+
                 if (!pinging)
                     break;
 
@@ -267,10 +267,10 @@ static void* m_receive_ping(void *arg)
                 }
                 else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
                 {
-                    struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 1);
+                    struct ip *orig_ip_hdr = (struct ip *)(recv_icmp + 8);  // The original IP header starts after 8 bytes of ICMP data
                     int orig_ip_header_len = orig_ip_hdr->ip_hl << 2;
                     struct icmp *orig_icmp_hdr = (struct icmp *)((char *)orig_ip_hdr + orig_ip_header_len);
-struct icmp *recv_icmp = (struct icmp *)(recvbuf + ip_header_len);
+
                     char src_ip_str[INET_ADDRSTRLEN];
                     char host[NI_MAXHOST];
                     inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
@@ -282,12 +282,12 @@ struct icmp *recv_icmp = (struct icmp *)(recvbuf + ip_header_len);
                     if (getnameinfo((struct sockaddr*)&sa, sizeof(sa), host, sizeof(host), NULL, 0, 0) == 0)
                     {
                         printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                                host, src_ip_str, recv_icmp->icmp_seq);
+                               host, src_ip_str, ntohs(orig_icmp_hdr->icmp_seq));
                     }
                     else
                     {
                         printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                                src_ip_str, src_ip_str, recv_icmp->icmp_seq);
+                               src_ip_str, src_ip_str, ntohs(orig_icmp_hdr->icmp_seq));
                     }
                 }
             }
