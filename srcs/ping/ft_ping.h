@@ -12,7 +12,6 @@
 #define I_FLAG 0x0080
 #define T_FLAG 0x0100
 
-
 void ping(const char *destination, int flags, int preload, int timeout_time, double interval, int ttl);
 
 #define USAGE "\
@@ -25,8 +24,9 @@ Options:\n\
     -n              no reverse DNS name resolution\n\
     -q              quiet output\n\
     -v              verbose output\n\
-    -f              flood ping\n\
+    -f              flood ping (overrides 'i'\n\
     -D              print timestamps\n\
+    -t  <ttl>       define time to live\n\
     -i  <interval>  seconds between sending each packet\n\
     -W  <timeout>   time to wait for response\n\
 "

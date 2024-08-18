@@ -55,14 +55,12 @@ typedef struct ping_args
 volatile int pinging = 1;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-int pipefd[2];
 
 static void m_handle_signal(int sig)
 {
     UNUSED_PARAM(sig);
     pinging = 0;
     pthread_cond_broadcast(&cond);
-    write(pipefd[1], "\n", 1);
 }
 
 static unsigned short m_checksum(void *b, int len)
@@ -103,6 +101,7 @@ static void* m_send_ping(void *arg)
     int flags = args->flags;
     int ttl = args->ttl;
     double interval = args->interval >= 0 ? args->interval : INTERVAL;
+    interval = (flags & F_FLAG) ? 0.00005 : interval; /* set the minimum if flood flag it's active. */
     if (interval < 0.0005)
     {
         interval = 0.0005;
@@ -147,7 +146,6 @@ static void* m_send_ping(void *arg)
         ts.tv_sec += (int)interval;
         ts.tv_nsec += (interval - (int)interval) * 1e9;
 
-        // Normalize timespec structure
         if (ts.tv_nsec >= 1e9)
         {
             ts.tv_sec += 1;
@@ -156,6 +154,7 @@ static void* m_send_ping(void *arg)
 
         if (preload <= 0)
         {
+            /* will awake either by ctrlc or ts */
             pthread_cond_timedwait(&cond, &mutex, &ts);
         }
         else
@@ -172,10 +171,9 @@ static void* m_send_ping(void *arg)
 
 static void* m_receive_ping(void *arg)
 {
-    fd_set readfds;
-    char recvbuf[1024];  // Buffer size to accommodate large packets
+    char recvbuf[1024];
     socklen_t len = sizeof(struct sockaddr_in);
-    struct timeval end, timeout;
+    struct timeval end;
 
     ping_args_t* args = (ping_args_t*)arg;
     struct sockaddr_in addr = *args->addr;
@@ -189,115 +187,96 @@ static void* m_receive_ping(void *arg)
     double sum_sq_diff = *args->sum_sq_diff;
     int received = *args->received;
     int errors = *args->errors;
-    int timeout_time = args->timeout_time > 0 ? args->timeout_time : TIMEOUT;
     unsigned int awake = 0;
 
     while (pinging)
     {
-        timeout.tv_sec = timeout_time;
-        timeout.tv_usec = 0;
-        FD_ZERO(&readfds);
-        FD_SET(sockfd, &readfds);
-        FD_SET(pipefd[0], &readfds);
-
-        int max_fd = (sockfd > pipefd[0]) ? sockfd : pipefd[0];
-        int ret = select(max_fd + 1, &readfds, NULL, NULL, &timeout);
-        if (ret > 0)
+        if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
         {
-            if (!pinging)
-                break;
-
-            if (FD_ISSET(pipefd[0], &readfds)) {
-                break;
-            }
-
-            if (FD_ISSET(sockfd, &readfds))
-            {
-                if (recvfrom(sockfd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&addr, &len) <= 0)
-                {
-                    continue;
-                }
-
-                if (!pinging)
-                    break;
-
-                awake++;
-                gettimeofday(&end, NULL);
-
-                struct timeval start = *args->start;
-
-                double elapsed = (end.tv_sec - start.tv_sec) * 1000.0;
-                elapsed += (end.tv_usec - start.tv_usec) / 1000.0;
-
-                struct ip *ip_hdr = (struct ip *)recvbuf;
-                int ip_header_len = ip_hdr->ip_hl << 2;
-                struct icmp *recv_icmp = (struct icmp *)(recvbuf + ip_header_len);
-
-                if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
-                {
-                    received++;
-                    *args->received = received;
-                    
-                    if (!(flags & Q_FLAG))
-                    {
-                        if (flags & D_FLAG)
-                        {
-                            printf("[%ld.%06ld] ", end.tv_sec, end.tv_usec);
-                        }
-
-                        printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
-                               PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
-                    }
-
-                    if (elapsed < min_time)
-                    {
-                        min_time = elapsed;
-                        *args->min_time = min_time;
-                    }
-                    if (elapsed > max_time)
-                    {
-                        max_time = elapsed;
-                        *args->max_time = max_time;
-                    }
-                    total_time += elapsed;
-                    *args->total_time = total_time;
-
-                    double diff = elapsed - avg_time;
-                    avg_time += diff / received;
-                    *args->avg_time = avg_time;
-                
-                    sum_sq_diff += diff * (elapsed - avg_time);
-                    *args->sum_sq_diff = sum_sq_diff;
-                }
-                else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
-                {
-                    errors++;
-                    *args->errors = errors;
-
-                    char src_ip_str[INET_ADDRSTRLEN];
-                    char host[NI_MAXHOST];
-                    inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
-
-                    struct sockaddr_in sa;
-                    sa.sin_family = AF_INET;
-                    inet_pton(AF_INET, src_ip_str, &sa.sin_addr);
-
-                    if (getnameinfo((struct sockaddr*)&sa, sizeof(sa), host, sizeof(host), NULL, 0, 0) == 0)
-                    {
-                        printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                               host, src_ip_str, awake);
-                    }
-                    else
-                    {
-                        printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
-                               src_ip_str, src_ip_str, awake);
-                    }
-                }
-            }
+            continue;
         }
-        else
+
+        if (!pinging)
+            break;
+
+        awake++;
+        gettimeofday(&end, NULL);
+
+        struct timeval start = *args->start;
+
+        double elapsed = (end.tv_sec - start.tv_sec) * 1000.0;
+        elapsed += (end.tv_usec - start.tv_usec) / 1000.0;
+
+        if ((flags & W_FLAG) && (elapsed > args->timeout_time))
         {
-            /* select timeout, ignore!!! */
+            errors++;
+            *args->errors = errors;
+            continue;
+        }
+
+        struct ip *ip_hdr = (struct ip *)recvbuf;
+        int ip_header_len = ip_hdr->ip_hl << 2;
+        struct icmp *recv_icmp = (struct icmp *)(recvbuf + ip_header_len);
+
+        if (recv_icmp->icmp_type == ICMP_ECHOREPLY && recv_icmp->icmp_id == getpid())
+        {
+            received++;
+            *args->received = received;
+            
+            if (!(flags & Q_FLAG))
+            {
+                if (flags & D_FLAG)
+                {
+                    printf("[%ld.%06ld] ", end.tv_sec, end.tv_usec);
+                }
+
+                printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+                        PACKET_SIZE, ip_str, recv_icmp->icmp_seq, ip_hdr->ip_ttl, elapsed);
+            }
+
+            if (elapsed < min_time)
+            {
+                min_time = elapsed;
+                *args->min_time = min_time;
+            }
+            if (elapsed > max_time)
+            {
+                max_time = elapsed;
+                *args->max_time = max_time;
+            }
+            total_time += elapsed;
+            *args->total_time = total_time;
+
+            double diff = elapsed - avg_time;
+            avg_time += diff / received;
+            *args->avg_time = avg_time;
+        
+            sum_sq_diff += diff * (elapsed - avg_time);
+            *args->sum_sq_diff = sum_sq_diff;
+        }
+        else if (recv_icmp->icmp_type == ICMP_TIME_EXCEEDED)
+        {
+            errors++;
+            *args->errors = errors;
+
+            char src_ip_str[INET_ADDRSTRLEN];
+            char host[NI_MAXHOST];
+            inet_ntop(AF_INET, &(ip_hdr->ip_src), src_ip_str, INET_ADDRSTRLEN);
+
+            struct sockaddr_in sa;
+            sa.sin_family = AF_INET;
+            inet_pton(AF_INET, src_ip_str, &sa.sin_addr);
+
+            if (getnameinfo((struct sockaddr*)&sa, sizeof(sa), host, sizeof(host), NULL, 0, 0) == 0)
+            {
+                printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
+                        host, src_ip_str, awake);
+            }
+            else
+            {
+                printf("From %s (%s) icmp_seq=%d Time to live exceeded\n",
+                        src_ip_str, src_ip_str, awake);
+            }
         }
     }
 
@@ -338,7 +317,7 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
 
     if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0)
     {
-        fprintf(stderr, "ft_ping: Fatal error connecting socket.\n");
+        fprintf(stderr, "ft_ping: Fatal error connecting socket. Check permission.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -376,6 +355,10 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     pthread_create(&send_thread, NULL, m_send_ping, &args);
     pthread_create(&recv_thread, NULL, m_receive_ping, &args);
 
+    /*
+        wait only for send_thread, we dont care about recv_thread,
+        data race possibility it's despreciable.
+    */
     pthread_join(send_thread, NULL);
 
     gettimeofday(&total_end, NULL);
@@ -385,7 +368,9 @@ void ping(const char *destination, int flags, int preload, int timeout_time, dou
     printf("\n--- %s ping statistics ---\n", destination);
     printf("%d packets transmitted, %d received, ", transmitted, received);
     if (errors > 0)
+    {
         printf("+%d errors, ", errors);
+    }
     printf("%.0f%% packet loss, time %ldms\n",
            (transmitted - received) / (double)transmitted * 100.0,
            (total_end.tv_sec - total_start.tv_sec) * 1000 + (total_end.tv_usec - total_start.tv_usec) / 1000);
